@@ -31,7 +31,7 @@ Quick start (Python app)
    python Arculus_Recovery.py --gui
 
 Quick start (HTML app)
-1. Open Arculus_BTC_Recovery.html in a modern browser (Chrome/Edge/Firefox/Safari).
+1. Open Arculus_Recovery.html in a modern browser (Chrome/Edge/Firefox/Safari).
 2. No server setup is required.
 
 Suggested GitHub notes for users
