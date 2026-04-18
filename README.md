@@ -1,9 +1,9 @@
-# Arculus-BTC-Recovery
-Arculus BTC Recovery
+# Arculus_Recovery
+Arculus_Recovery
 
-Arculus BTC Recovery is an offline Bitcoin seed recovery utility provided in two formats:
-- Desktop Python app: Arculus_BTC_Recovery.py
-- Standalone browser app: Arculus_BTC_Recovery.html
+Arculus_Recovery is an offline Multi-Coin seed recovery utility provided in two formats:
+- Desktop Python app: Arculus_Recovery.py
+- Standalone browser app: Arculus_Recovery.html
 
 What it does
 - Validates BIP39 English seed phrases (12 or 24 words), including checksum verification.
@@ -28,7 +28,7 @@ Key capabilities
 Quick start (Python app)
 1. Install Python 3.10+.
 2. Run:
-   python Arculus_BTC_Recovery.py --gui
+   python Arculus_Recovery.py --gui
 
 Quick start (HTML app)
 1. Open Arculus_BTC_Recovery.html in a modern browser (Chrome/Edge/Firefox/Safari).
@@ -40,9 +40,3 @@ Suggested GitHub notes for users
 - Verify downloaded files (checksums/signatures/releases) before use.
 - This tool performs local derivation only; it does not query blockchain services.
 - The project is intended for recovery/inspection workflows, not as a daily-use wallet.
-
-Recommended repository additions
-- Include this file as part of your README/release notes.
-- Add a LICENSE file.
-- Add SECURITY.md with responsible disclosure and handling guidance.
-- Add clear version tags/releases and changelog entries.
