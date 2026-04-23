@@ -35,9 +35,9 @@ Quick start (HTML app)
 2. No server setup is required.
 
 Current Support
-Bitcoin
-Dogecoin
-Litecoin
+1. Bitcoin
+2. Dogecoin
+3. Litecoin
 
 Suggested GitHub notes for users
 - Security warning: Never share your real seed phrase, private keys, or exported output.
