@@ -1,0 +1,179 @@
+# Threat Model — Arculus Recovery
+
+**Version:** Current (`main` branch)
+**Last Updated:** 2026-05-06
+**Scope:** `Arculus_Recovery.html`, `index.html`, `Arculus_Recovery.py`
+
+---
+
+## 1. Overview
+
+Arculus Recovery is an offline BIP39/BIP32 seed recovery and key-derivation utility. It is available as a self-contained HTML file opened directly in a browser and as a Python script with both a desktop GUI (Tkinter) and a CLI. The tool performs all computation locally. It requires no server, cloud API, network request, telemetry endpoint, or external package.
+
+The fundamental security promise is: **seed phrases, passphrases, private keys, and derived output never leave the user's machine through the application itself.**
+
+---
+
+## 2. Assets
+
+The following assets are considered sensitive and are the primary targets of any attack against this tool.
+
+| Asset | Description | Sensitivity |
+|---|---|---|
+| BIP39 mnemonic | 12- or 24-word seed phrase | Critical |
+| BIP39 passphrase | Optional 25th-word extension | Critical |
+| Master private key | Root HD wallet key derived from seed | Critical |
+| Master chain code | Root HD wallet chain code | Critical |
+| Derived private keys | Child keys at specific derivation paths | Critical |
+| Extended private keys (xprv) | Serialized HD private keys | Critical |
+| `.arc` encrypted seed file | Password-protected mnemonic backup | High |
+| `.arc` encryption password | Password used to protect the `.arc` file | High |
+| Derived addresses | Public-facing addresses; less sensitive but linkable | Low–Medium |
+| Derived extended public keys (xpub) | Watch-only wallet keys | Medium |
+| JSON/CSV/TXT derived-output exports | May contain private keys | Critical (if xprv included) |
+
+---
+
+## 3. Trust Boundaries
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   USER'S MACHINE                        │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │         Arculus Recovery Application             │   │
+│  │   (HTML in browser  /  Python GUI or CLI)        │   │
+│  │                                                  │   │
+│  │  • BIP39 validation     • Key derivation         │   │
+│  │  • .arc encrypt/decrypt • Export (JSON/CSV/TXT)  │   │
+│  └──────────────────────────────────────────────────┘   │
+│                         │                               │
+│              Local filesystem only                      │
+│         (file open/save dialogs or CLI paths)           │
+│                                                         │
+│  ┌───────────────────┐   ┌───────────────────────────┐  │
+│  │  Browser storage  │   │  OS clipboard / memory    │  │
+│  │  (dark-mode pref  │   │  (ephemeral; shared with  │  │
+│  │   only — no seeds)│   │   other processes)        │  │
+│  └───────────────────┘   └───────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+         ║
+         ║  ← No network traffic crosses this boundary
+         ║     during normal tool operation
+         ▼
+    [ Internet / Remote Services ]   ← Out of scope for this tool
+```
+
+---
+
+## 4. Threat Actors
+
+| Actor | Capability | Motivation |
+|---|---|---|
+| Remote attacker (network) | Can intercept traffic, serve malicious pages | Steal funds by capturing seed |
+| Local attacker (same machine) | Can read process memory, clipboard, temp files | Steal seed material from a compromised session |
+| Malicious file supplier | Can distribute a backdoored copy of the tool | Exfiltrate seed on first use |
+| Physical attacker | Can access a powered-off or unattended machine | Extract keys from disk or memory |
+| Passive observer | Can see screen, capture photos/video | Visual exposure of seed or private keys |
+
+---
+
+## 5. Threat Scenarios
+
+### 5.1 Network-Based Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| N-1 | User opens the HTML file while online; a browser extension exfiltrates form contents | Medium | Critical | Disconnect from internet before use; disable extensions; use a clean browser profile |
+| N-2 | User downloads a trojanized copy from a malicious mirror | Medium | Critical | Verify SHA256 hashes published in the README before every use |
+| N-3 | DNS or BGP hijack redirects a hosted copy | Low | Critical | The tool is designed to be opened as a local file, not served from a website |
+
+### 5.2 Local / Host-Based Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| L-1 | Keylogger captures seed entry | Medium | Critical | Use an air-gapped machine; avoid general-purpose desktops for seed work |
+| L-2 | Screen recorder or screenshot captures mnemonic display | Medium | Critical | Cover screen when working; use press-and-hold reveal only when necessary |
+| L-3 | Clipboard manager stores copied seed phrase | High | Critical | Avoid copying seed phrases; the app warns before clipboard use |
+| L-4 | Browser stores form values or autofill history | Medium | High | Use a private/incognito window or a clean browser profile |
+| L-5 | Process memory scraping extracts the decrypted mnemonic | Low | Critical | The decrypted mnemonic must exist in memory during use; minimize time in memory by closing the app promptly |
+| L-6 | Derived-output export file (JSON/CSV/TXT) left unprotected | High | Critical | Treat every export as secret; store on encrypted media; delete after use |
+| L-7 | Browser download history reveals that a seed tool was used | Low | Medium | Clear browser downloads and history after use |
+
+### 5.3 Encrypted Seed File (`.arc`) Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| A-1 | Weak password enables offline brute-force of `.arc` file | High (if weak password) | Critical | Use a strong, unique passphrase; the KDF uses 1,000,000 PBKDF2-HMAC-SHA512 iterations to slow guessing |
+| A-2 | MAC bypass attack against the `.arc` format | Very Low | Critical | HMAC-SHA512 covers all versioned metadata, KDF parameters, nonce, and ciphertext |
+| A-3 | Nonce reuse in HMAC-SHA512 counter stream | Very Low | High | A 24-byte random nonce is generated fresh per export |
+| A-4 | `.arc` file stored in an insecure location (cloud sync, email) | High | High | Store `.arc` files on encrypted removable media only; never cloud-sync them |
+| A-5 | Older format imports (≥600,000 iterations) accepted alongside current exports | Low | Low | Legacy imports are accepted for compatibility; users should re-export to current format when possible |
+
+### 5.4 Supply-Chain Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| S-1 | Malicious commit to repository injects backdoor | Low | Critical | Verify SHA256 hashes from the README on every download |
+| S-2 | GitHub account compromise leads to backdoored release | Low | Critical | Hash verification is independent of GitHub trust |
+| S-3 | Python standard library vulnerability exploited | Very Low | Medium | The tool uses only stdlib; keep the Python runtime patched |
+
+### 5.5 Operational Threats
+
+| ID | Threat | Likelihood | Impact | Mitigation |
+|---|---|---|---|---|
+| O-1 | User recovers seed on a machine already infected with malware | High | Critical | Use a dedicated air-gapped machine; run from a live OS if possible |
+| O-2 | User shares exported files containing private keys | Medium | Critical | Exports are not encrypted; treat as plaintext secrets |
+| O-3 | User forgets to disconnect from internet before use | High | Medium | The README and SECURITY.md both emphasize offline use |
+| O-4 | Physical shoulder-surfing during seed entry | Medium | Critical | Use the tool in a private environment |
+
+---
+
+## 6. Cryptographic Design Summary
+
+| Component | Algorithm | Parameters |
+|---|---|---|
+| BIP39 seed derivation | PBKDF2-HMAC-SHA512 | 2048 iterations, salt = `"mnemonic" + passphrase` (standard) |
+| BIP32 master key | HMAC-SHA512 | Key = `"Bitcoin seed"` |
+| `.arc` KDF | PBKDF2-HMAC-SHA512 | 1,000,000 iterations, 32-byte random salt |
+| `.arc` encryption | HMAC-SHA512 counter stream | 24-byte random nonce |
+| `.arc` authentication | HMAC-SHA512 | Covers versioned metadata, KDF params, nonce, and ciphertext |
+| Key separation | Domain-specific HMAC-SHA512 labels | Encryption key ≠ authentication key |
+| Password normalization | Unicode NFKD | Applied before KDF in both mnemonic and `.arc` contexts |
+
+---
+
+## 7. Out of Scope
+
+The following are explicitly outside the threat model of this tool:
+
+- Malware already present on the host machine at the time of use
+- Vulnerabilities in the user's browser, OS, Python runtime, or firmware
+- Physical access by an adversary to a machine after use
+- Side-channel attacks (timing, power, EM) against the cryptographic primitives
+- Attacks against the BIP39 or BIP32 standards themselves
+- Social engineering of the user
+
+---
+
+## 8. Residual Risks
+
+Even with all recommended mitigations applied, the following residual risks remain:
+
+1. **Memory exposure:** The decrypted mnemonic must reside in process memory during validation and derivation. A sufficiently privileged attacker with access to the machine during a session can extract it.
+2. **Password strength:** The security of `.arc` files at rest is bounded entirely by password entropy. No technical control compensates for a guessable password.
+3. **Unencrypted derived exports:** JSON/CSV/TXT exports containing private keys have no built-in encryption. They are as sensitive as the mnemonic itself.
+
+---
+
+## 9. Recommended Mitigations Summary
+
+1. Use the tool on an air-gapped machine, ideally booted from a live OS.
+2. Verify SHA256 hashes from the README before every use.
+3. Disconnect from the internet before opening the HTML file or running the Python script.
+4. Use a clean browser profile with all extensions disabled.
+5. Use a strong, unique password for `.arc` exports.
+6. Store `.arc` files and derived-output exports on encrypted removable media.
+7. Clear clipboard, download history, and terminal history after every session.
+8. Avoid copying seed phrases, passphrases, or private keys to the clipboard.
+9. Close the application promptly when done.
